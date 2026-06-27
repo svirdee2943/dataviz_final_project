@@ -2,42 +2,56 @@
 
 > Sukhadevsingh Jogindrasingh Virdee. 
 
+This repository contains the final projects completed for the **Data Visualization and Reproducible Research** course. The projects demonstrate a variety of visualization techniques using R and R Markdown while emphasizing reproducible research, effective storytelling, accessibility, and interactive graphics. Throughout the semester I learned how to transform raw datasets into meaningful visualizations and communicate insights using modern data visualization principles.
 
-The following is a sample of products created during the _"Data Visualization and Reproducible Research"_ course.
+---
 
+## Project 01 – NYC Rat Sighting Analysis
 
-## Project 01
+The first project explores the **New York City 311 Rat Sightings** dataset. The objective was to identify patterns in reported rat sightings across boroughs, months, and days of the week. The project applies exploratory data analysis and multiple visualization techniques to highlight geographic and temporal trends. Interactive graphics, accessibility improvements, and clear annotations were incorporated to improve interpretation and usability.
 
-In the `project_01/` folder you can find... _[add short description of your revised project here]_
+**Dataset:** NYC 311 Rat Sighting Complaints
 
-**Sample data visualization:** 
+**Favorite Visualization:** Borough comparison of reported rat sightings.
 
-_[include your favorite visualization from this project here]_
-<img src="https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/echarts.png" width="70%" height="70%">
+![](figures/Project1_borough-plot-1.png)
 
+---
 
-## Project 02
+## Project 02 – United States Birth Trends (2000–2014)
 
-In this project, I explored ... _[short description of your revised project goes here]_ Find the code and report in the `project_02/` folder.
+The second project analyzes daily birth records in the United States between **2000 and 2014**. The analysis investigates long-term birth trends, differences across weekdays, and annual variation using descriptive, statistical, and interactive visualizations. The project includes an interactive Plotly chart, regression analysis, and accessibility enhancements to provide a comprehensive exploration of birth patterns.
 
-**Sample data visualization:** 
+**Dataset:** U.S. Births 2000–2014
 
-_[include your favorite visualization from this project here]_
-<img src="https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/fl_higher_ed.png" width="80%" height="80%">
+**Favorite Visualization:** Interactive time-series visualization of annual birth trends.
 
-(you can place your figures in the `figures/` folder and use the `![](path_to_picture)` option to add the pictures here)
+![](figures/Project2_births.JPG)
+---
 
+## Project 03 – Advanced Data Visualization Techniques
 
-## Project 03
+The third project focuses on applying advanced visualization techniques learned throughout the course. Using Tampa weather data and spatial datasets, this project demonstrates density plots, faceted visualizations, ridgeline plots, interactive graphics, accessibility improvements, and redesign of an ineffective chart. The project emphasizes reproducible workflows, thoughtful design choices, and effective visual communication.
 
-In this project, I explored ... _[short description of the data visualizations you for this part of the project produced goes here]_
+**Datasets:** Tampa Weather 2022 and course spatial datasets
 
-**Sample data visualization:** 
+**Favorite Visualization:** Ridgeline visualization showing monthly distributions of daily maximum temperatures.
 
-_[include your favorite visualization from this project here]_
-<img src="https://raw.githubusercontent.com/aalhamadani/dataviz_final_project/main/figures/concrete_density.png" width="80%" height="80%">
+![](figures/Project3_max-temp-ridges-1.png)
+---
 
+## Accessibility and Interactive Features
 
-### Moving Forward
+The final project incorporates several best practices introduced during the course:
 
-_Please add here a short reflection on what you learned and what you plan to continue exploring in terms of data visualization, data storytelling, reproducible research, and/or related topics._
+* Interactive visualizations created using Plotly.
+* Colorblind-friendly color palettes using the **viridis** package.
+* Alternative text (`fig.alt`) provided for figures to improve accessibility.
+* Improved chart annotations and labeling to enhance storytelling.
+* A redesigned chart demonstrating improved visualization principles.
+
+---
+
+## Moving Forward
+
+This course significantly improved my understanding of data visualization, reproducible research, and data storytelling. I learned how to create effective graphics using **ggplot2**, build interactive visualizations with **Plotly**, work with spatial data, and organize complete analytical reports using **R Markdown**. I also gained experience applying visualization design principles, improving accessibility, and communicating analytical findings through clear narratives. Going forward, I plan to continue developing my skills in interactive dashboards, geospatial visualization, statistical graphics, and reproducible data science workflows using R.

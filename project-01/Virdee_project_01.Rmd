@@ -1,0 +1,283 @@
+---
+title: "Data Visualization - Mini-Project 1"
+author: "Sukhadevsingh Jogindrasingh Virdee `svirdee2943@floridapoly.edu`"
+output:
+  html_document:
+    keep_md: true
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+# Introduction
+
+This revised mini-project analyzes New York City 311 rat sighting complaints. Rat sighting reports are useful for understanding how urban public health concerns vary across place and time. Because 311 complaints include temporal and geographic information, the data can be used to examine which boroughs report the most sightings, how complaints change across the year, and whether reporting patterns differ by day of the week.
+
+The goal of this report is not to prove what causes rat activity, but to use visualization to communicate important reporting patterns in the dataset. The report includes static and interactive visualizations, accessible color choices, alt text, and a before/after chart redesign to demonstrate stronger data visualization design.
+
+# Load Libraries
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(plotly)
+library(htmlwidgets)
+library(viridis)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+# Load and Prepare Data
+
+```{r load-data}
+# Preferred path when the file is included in the project data folder.
+local_file <- "../data/rats_nyc.csv"
+
+# Backup online source used only if the local file is not present.
+# The local file should be included in the submitted repository when possible.
+remote_file <- "https://raw.githubusercontent.com/reisanar/datasets/master/rats_nyc.csv"
+
+if (file.exists(local_file)) {
+  rats <- read_csv(local_file, show_col_types = FALSE)
+} else {
+  rats <- read_csv(remote_file, show_col_types = FALSE)
+}
+
+rats <- rats %>%
+  mutate(
+    borough = str_to_title(borough),
+    borough = na_if(borough, "Unspecified"),
+    sighting_month = as.integer(sighting_month),
+    sighting_weekday = factor(
+      sighting_weekday,
+      levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    ),
+    month_name = factor(
+      month.name[sighting_month],
+      levels = month.name
+    )
+  ) %>%
+  filter(!is.na(borough), !is.na(sighting_month), !is.na(sighting_weekday))
+```
+
+# Dataset Description
+
+The NYC rat sighting dataset contains public 311 service complaints related to reported rat sightings. Each row represents a complaint record, and the dataset includes variables such as borough, city, incident ZIP code, location type, complaint status, and date-based variables such as year, month, day, and weekday.
+
+For this revised report, the analysis focuses on three main questions:
+
+1. Which boroughs report the most rat sightings?
+2. How do reports vary across months of the year?
+3. Are there differences in reports across weekdays and weekends?
+
+```{r data-summary}
+rats %>%
+  summarise(
+    observations = n(),
+    boroughs = n_distinct(borough),
+    years = n_distinct(sighting_year),
+    months = n_distinct(sighting_month)
+  )
+```
+# Visualization 1: Rat Sightings by Borough
+
+```{r borough-summary}
+borough_summary <- rats %>%
+  count(borough, sort = TRUE)
+```
+
+```{r borough-plot, fig.alt="Horizontal bar chart showing total rat sighting complaints by New York City borough. Brooklyn has the highest number of reports among the boroughs shown."}
+borough_plot <- ggplot(
+  borough_summary,
+  aes(x = reorder(borough, n), y = n, fill = borough)
+) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = scales::comma(n)), hjust = -0.1, size = 3.4) +
+  coord_flip() +
+  scale_fill_viridis_d(option = "C") +
+  scale_y_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Rat Sightings by Borough",
+    subtitle = "Total NYC 311 rat sighting complaints by borough",
+    x = "Borough",
+    y = "Number of complaints"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.major.y = element_blank()
+  )
+
+borough_plot
+```
+
+### Interpretation
+
+This chart shows that rat sighting complaints are not evenly distributed across New York City boroughs. The borough with the largest number of reports stands out clearly, while other boroughs have lower totals. This does not prove that one borough has more rats than another because 311 data also reflects population size, reporting behavior, and public awareness. However, it does show where reported complaints are concentrated.
+
+# Interactive Chart
+
+```{r interactive-borough-chart}
+interactive_borough <- ggplotly(
+  borough_plot,
+  tooltip = c("x", "y")
+) %>%
+  layout(title = list(text = "Interactive Rat Sightings by Borough"))
+
+interactive_borough
+```
+
+```{r save-interactive-chart, eval=FALSE}
+# Run this chunk if you want a separate self-contained HTML widget file.
+saveWidget(
+  interactive_borough,
+  file = "rat_sightings_by_borough_interactive.html",
+  selfcontained = TRUE
+)
+```
+
+### Why the Interactive Chart Helps
+
+The interactive version allows readers to hover over the chart and inspect exact complaint totals by borough. This improves the static chart by making the values easier to explore without adding too many labels or clutter to the figure.
+
+# Visualization 2: Rat Sightings by Month
+
+```{r monthly-summary}
+monthly_summary <- rats %>%
+  count(month_name) %>%
+  mutate(month_number = as.integer(month_name))
+```
+
+```{r monthly-plot, fig.alt="Line chart showing NYC rat sighting complaints by month. The chart shows seasonal variation in reported complaints across the year."}
+ggplot(monthly_summary, aes(x = month_name, y = n, group = 1)) +
+  geom_line(linewidth = 1, color = "gray35") +
+  geom_point(aes(color = n), size = 3) +
+  scale_color_viridis_c(option = "C", labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Rat Sightings Throughout the Year",
+    subtitle = "Monthly totals show when 311 complaints are most common",
+    x = "Month",
+    y = "Number of complaints",
+    color = "Complaints"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+### Interpretation
+
+The monthly pattern suggests that rat sighting complaints vary across the year. Some months have noticeably higher report totals than others, which may reflect seasonal patterns, changes in outdoor activity, or differences in when residents are more likely to report sightings. Because this dataset does not include weather, sanitation, or construction variables, the chart should be interpreted as a pattern in reported complaints rather than direct evidence of the causes of rat activity.
+
+# Visualization 3: Rat Sightings by Weekday
+
+```{r weekday-summary}
+weekday_summary <- rats %>%
+  count(sighting_weekday) %>%
+  mutate(day_type = if_else(sighting_weekday %in% c("Saturday", "Sunday"), "Weekend", "Weekday"))
+
+highest_weekday <- weekday_summary %>%
+  slice_max(n, n = 1)
+```
+
+```{r weekday-plot, fig.alt="Bar chart showing rat sighting complaints by day of the week in calendar order from Monday through Sunday."}
+ggplot(
+  weekday_summary,
+  aes(x = sighting_weekday, y = n, fill = day_type)
+) +
+  geom_col(width = 0.75) +
+  geom_text(aes(label = scales::comma(n)), vjust = -0.3, size = 3.2) +
+  annotate(
+    "text",
+    x = highest_weekday$sighting_weekday,
+    y = highest_weekday$n * 1.08,
+    label = "Highest reporting day",
+    size = 3.5,
+    fontface = "bold"
+  ) +
+  scale_fill_viridis_d(option = "C", end = 0.8) +
+  scale_y_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Rat Sightings by Weekday",
+    subtitle = "Weekdays are shown in calendar order rather than sorted by count",
+    x = "Day of week",
+    y = "Number of complaints",
+    fill = "Day type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+### Interpretation
+
+Ordering the days from Monday through Sunday makes the chart easier to interpret as a weekly cycle. The results show differences in complaint reporting across weekdays and weekends. These differences may reflect reporting behavior, work schedules, or actual differences in when people observe rats. The chart avoids making a causal claim because the dataset records complaints rather than direct measures of rat population.
+
+# Bad Chart Redesign: Before and After
+
+The final project asks for a bad or misleading chart to be redesigned. The original version below intentionally uses poor design choices: a pie chart, a rainbow palette, and labels that are difficult to compare. Pie charts can make borough comparisons harder because readers must compare angles rather than a common baseline.
+
+## Before: Poor Chart Design
+
+```{r bad-chart, fig.alt="Poorly designed pie chart showing rat sighting complaints by borough using a rainbow palette. The slices are harder to compare accurately."}
+ggplot(borough_summary, aes(x = "", y = n, fill = borough)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = rainbow(nrow(borough_summary))) +
+  labs(
+    title = "Bad Chart: Rat Sightings by Borough",
+    fill = "Borough"
+  ) +
+  theme_void()
+```
+
+## After: Improved Chart Design
+
+```{r redesigned-chart, fig.alt="Improved horizontal bar chart showing rat sighting complaints by borough using a colorblind-safe viridis palette and a common baseline for comparison."}
+ggplot(
+  borough_summary,
+  aes(x = reorder(borough, n), y = n, fill = borough)
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  geom_text(aes(label = scales::comma(n)), hjust = -0.1, size = 3.4) +
+  scale_fill_viridis_d(option = "C") +
+  scale_y_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Redesigned Chart: Rat Sightings by Borough",
+    subtitle = "Horizontal bars make borough comparisons easier and more accessible",
+    x = "Borough",
+    y = "Number of complaints"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Redesign Explanation
+
+The redesigned chart improves the original by replacing the pie chart with a horizontal bar chart. A bar chart uses a common baseline, making the borough totals easier to compare. The improved version also uses a colorblind-safe viridis palette, direct value labels, clear axis labels, and a cleaner theme. These changes reduce chartjunk and make the visualization more readable and accessible.
+
+# Accessibility and Design Notes
+
+This report uses `fig.alt` descriptions for figures so that the visual content is more accessible. It also uses viridis color palettes, which are more readable for viewers with common forms of color vision deficiency. When possible, the charts avoid relying only on color by also using labels, position, and ordering to communicate meaning.
+
+# Story Told by the Data
+
+The data shows that NYC rat sighting complaints vary by borough, month, and day of week. Borough-level totals reveal that complaints are concentrated unevenly across the city. Monthly totals suggest that reporting patterns fluctuate throughout the year. Weekday patterns show that reports are not distributed equally across the week, but these patterns should be interpreted carefully because 311 complaints reflect public reporting behavior as well as actual sightings.
+
+# Conclusion
+
+This revised analysis demonstrates how data visualization can communicate meaningful patterns in public service complaint data. The strongest finding is that rat sighting complaints are unevenly distributed across boroughs, suggesting that geographic context is important when interpreting 311 records. The monthly and weekday charts show additional temporal variation, but the dataset does not include enough explanatory variables to confirm causes such as weather, sanitation, or population density. The interactive chart, accessible palettes, alt text, and chart redesign strengthen the final report by improving both usability and storytelling.

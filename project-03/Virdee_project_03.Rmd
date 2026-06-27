@@ -1,0 +1,402 @@
+---
+title: "Data Visualization for Exploratory Data Analysis"
+output: 
+  html_document:
+    keep_md: true
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+```
+
+# Data Visualization Project 03
+
+This project demonstrates several additional visualization techniques beyond the first two mini-projects. The analysis includes distribution plots, density plots, ridgeline plots, a spatial visualization using shapefiles, an interactive chart, and a before/after chart redesign. The goal is to show not only technical ability in R, but also attention to accessibility, readability, and data storytelling.
+
+The project uses colorblind-safe palettes, descriptive titles, clear labels, and `fig.alt` text for accessibility.
+
+# Required Packages
+
+```{r packages}
+library(tidyverse)
+library(lubridate)
+library(viridis)
+library(plotly)
+library(htmlwidgets)
+library(sf)
+library(ggridges)
+```
+
+## PART 1: Tampa Weather Distribution Plots
+
+This section uses 2022 weather data for Tampa International Airport. The visualizations focus on maximum temperature and precipitation patterns. Missing values coded as `-99.9` for temperature and `-99.99` for precipitation are removed before plotting.
+
+```{r load-weather}
+weather_tpa <- read_csv("../data/tpa_weather_2022.csv")
+
+weather_clean <- weather_tpa %>%
+  mutate(
+    date = as.Date(paste(year, month, day, sep = "-")),
+    month_label = lubridate::month(date, label = TRUE, abbr = TRUE),
+    month_num = lubridate::month(date)
+  ) %>%
+  filter(
+    !is.na(max_temp),
+    max_temp != -99.9,
+    precipitation != -99.99
+  )
+
+glimpse(weather_clean)
+```
+
+## 1A. Faceted Histogram of Maximum Temperature
+
+```{r max-temp-histogram, fig.alt="Faceted histograms showing the distribution of daily maximum temperatures in Tampa during each month of 2022."}
+ggplot(weather_clean, aes(x = max_temp)) +
+  geom_histogram(binwidth = 3, fill = viridis(1, option = "D"), color = "white") +
+  facet_wrap(~ month, ncol = 4) +
+  labs(
+    title = "Distribution of Daily Maximum Temperatures in Tampa",
+    subtitle = "Faceted by month, 2022",
+    x = "Daily maximum temperature",
+    y = "Number of days",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+The faceted histograms show that Tampa's daily maximum temperatures vary across the year. Cooler values appear more frequently in the winter months, while the summer months show a tighter concentration of high temperatures. The monthly layout makes seasonal temperature shifts easier to compare because each month is shown using the same measurement scale.
+
+## 1B. Density Plot of Maximum Temperature by Month
+
+```{r max-temp-density, fig.alt="Density curves comparing daily maximum temperature distributions across months in Tampa during 2022."}
+ggplot(weather_clean, aes(x = max_temp, color = month)) +
+  geom_density(kernel = "gaussian", bw = 0.5, linewidth = 0.8) +
+  scale_color_viridis_d(option = "D") +
+  labs(
+    title = "Density of Daily Maximum Temperatures",
+    subtitle = "Monthly temperature distributions for Tampa, 2022",
+    x = "Daily maximum temperature",
+    y = "Density",
+    color = "Month",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+The density plot emphasizes how the shape of the temperature distribution changes by month. Summer months are concentrated toward warmer daily highs, while winter and early spring months have wider and cooler distributions. Using a density plot helps reveal the full distribution instead of only showing monthly averages.
+
+## 1C. Faceted Density Plot
+
+```{r max-temp-density-facet, fig.alt="Faceted density plots showing daily maximum temperature distributions separately for each month in Tampa during 2022."}
+ggplot(weather_clean, aes(x = max_temp, fill = month_label)) +
+  geom_density(alpha = 0.75) +
+  facet_wrap(~ month, ncol = 4) +
+  scale_fill_viridis_d(option = "D") +
+  labs(
+    title = "Monthly Density of Daily Maximum Temperatures",
+    subtitle = "Tampa International Airport, 2022",
+    x = "Daily maximum temperature",
+    y = "Density",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Interpretation
+
+The faceted density view is easier to read than overlaying every month in one panel. It allows each month to be inspected separately while still keeping a consistent design. This supports comparison without relying only on color, which improves accessibility.
+
+## 1D. Ridgeline Plot of Maximum Temperature
+
+```{r max-temp-ridges, fig.alt="Ridgeline plot showing the distribution of daily maximum temperatures by month in Tampa during 2022."}
+ggplot(weather_clean, aes(x = max_temp, y = month_label, fill = month_label)) +
+  geom_density_ridges(
+    quantile_lines = TRUE,
+    quantiles = 2,
+    scale = 2,
+    rel_min_height = 0.01,
+    alpha = 0.75
+  ) +
+  scale_fill_viridis_d(option = "D") +
+  labs(
+    title = "Ridgeline View of Tampa Maximum Temperatures",
+    subtitle = "Monthly distributions with median reference lines",
+    x = "Daily maximum temperature",
+    y = "Month",
+    fill = "Month",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Interpretation
+
+The ridgeline chart gives a compact comparison of monthly temperature distributions. The median lines help the reader compare months without depending only on color. The plot shows a clear seasonal movement from cooler winter temperatures to consistently warmer summer temperatures.
+
+## 1E. Precipitation by Month
+
+```{r precipitation-plot, fig.alt="Bar chart showing total precipitation by month for Tampa in 2022."}
+precip_month <- weather_clean %>%
+  group_by(month, month_num) %>%
+  summarize(total_precipitation = sum(precipitation, na.rm = TRUE), .groups = "drop") %>%
+  arrange(month_num)
+
+ggplot(precip_month, aes(x = month, y = total_precipitation, fill = total_precipitation)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_viridis_c(option = "C") +
+  labs(
+    title = "Total Monthly Precipitation in Tampa",
+    subtitle = "Monthly totals based on daily precipitation values, 2022",
+    x = "Month",
+    y = "Total precipitation",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+This chart shows that precipitation is not distributed evenly across the year. Some months receive substantially more rainfall than others, highlighting seasonal variation. This is useful because temperature alone does not describe the full weather pattern.
+
+# Required Interactive Chart
+
+The final project requires at least one interactive visualization. The chart below converts the precipitation chart into a Plotly visualization. The interactivity allows readers to hover over each bar and see the exact monthly precipitation value, which is more precise than reading values from a static axis.
+
+```{r interactive-precipitation}
+interactive_precip <- ggplot(
+  precip_month,
+  aes(
+    x = month,
+    y = total_precipitation,
+    text = paste0(
+      "Month: ", month,
+      "<br>Total precipitation: ", round(total_precipitation, 2)
+    )
+  )
+) +
+  geom_col(fill = viridis(1, option = "C")) +
+  labs(
+    title = "Interactive Monthly Precipitation in Tampa",
+    x = "Month",
+    y = "Total precipitation"
+  ) +
+  theme_minimal()
+
+interactive_precip_plot <- ggplotly(interactive_precip, tooltip = "text")
+interactive_precip_plot
+```
+
+
+```{r save-interactive, eval=FALSE}
+# Optional: uncomment this line if your instructor asks for a separate HTML widget.
+# htmlwidgets::saveWidget(interactive_precip_plot, "interactive_precipitation_project_03.html", selfcontained = TRUE)
+```
+
+# Spatial Visualization Using Shapefiles
+
+This spatial visualization uses a Florida county boundary shapefile. The shapefile components should be stored in the `data/Florida_Counties/` subfolder. A shapefile requires multiple related files, such as `.shp`, `.shx`, `.dbf`, and `.prj`, to remain together in the same folder.
+
+```{r spatial-map, fig.alt="Map showing Florida county boundaries using a county shapefile."}
+county_path_1 <- "data/Florida_Counties/Florida_Counties.shp"
+county_path_2 <- "../data/Florida_Counties/Florida_Counties.shp"
+
+if (file.exists(county_path_1)) {
+  county_path <- county_path_1
+} else if (file.exists(county_path_2)) {
+  county_path <- county_path_2
+} else {
+  stop("Florida_Counties.shp was not found. Place the Florida_Counties shapefile folder inside the data subfolder.")
+}
+
+fl_counties <- st_read(county_path, quiet = TRUE)
+
+ggplot(fl_counties) +
+  geom_sf(fill = "white", color = "gray50", linewidth = 0.3) +
+  labs(
+    title = "Spatial Visualization of Florida Counties",
+    subtitle = "County boundaries displayed using a shapefile",
+    caption = "Source: Florida_Counties shapefile"
+  ) +
+  theme_minimal()
+```
+
+### Spatial Visualization Interpretation
+
+This map demonstrates the use of spatial data in R with the `sf` package. The visualization is intentionally kept static and simple to avoid performance problems in the knitted HTML file. The county boundaries provide geographic context and satisfy the requirement to include a spatial visualization using shapefiles.
+
+# Part 2: Concrete Strength Visualization
+
+For the second part of this project, I selected the concrete strength dataset. This dataset contains quantitative variables related to concrete ingredients, age, and compressive strength.
+
+```{r load-concrete}
+concrete_url <- "https://raw.githubusercontent.com/aalhamadani/datasets/master/concrete.csv"
+
+concrete <- read_csv(concrete_url, col_types = cols())
+
+new_concrete <- concrete %>%
+  mutate(
+    strength_range = cut(
+      Concrete_compressive_strength,
+      breaks = quantile(
+        Concrete_compressive_strength,
+        probs = seq(0, 1, 0.2),
+        na.rm = TRUE
+      ),
+      include.lowest = TRUE
+    )
+  )
+
+glimpse(new_concrete)
+```
+
+## Distribution of Continuous Variables
+
+```{r concrete-distribution, fig.alt="Histogram showing the distribution of concrete compressive strength values."}
+ggplot(new_concrete, aes(x = Concrete_compressive_strength)) +
+  geom_histogram(binwidth = 5, fill = viridis(1, option = "D"), color = "white") +
+  labs(
+    title = "Distribution of Concrete Compressive Strength",
+    subtitle = "Most observations fall within lower to middle strength ranges",
+    x = "Concrete compressive strength",
+    y = "Number of observations",
+    caption = "Source: UCI concrete strength dataset / course dataset"
+  ) +
+  theme_minimal()
+```
+
+```{r cement-distribution, fig.alt="Histogram showing the distribution of cement amounts used in concrete mixtures."}
+ggplot(new_concrete, aes(x = Cement)) +
+  geom_histogram(binwidth = 25, fill = viridis(1, option = "C"), color = "white") +
+  labs(
+    title = "Distribution of Cement Amounts",
+    subtitle = "Cement content varies widely across concrete mixtures",
+    x = "Cement",
+    y = "Number of observations",
+    caption = "Source: UCI concrete strength dataset / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+The distributions show that concrete compressive strength and cement content vary meaningfully across the dataset. The strength distribution is not perfectly symmetric, which suggests that a single average value would not fully describe the data. Cement content also has a broad range, which is useful for studying how ingredient quantities relate to final strength.
+
+## Concrete Strength by Age
+
+```{r concrete-age, fig.alt="Boxplot showing concrete compressive strength across different concrete ages in days."}
+new_concrete %>%
+  mutate(Age = factor(Age)) %>%
+  ggplot(aes(x = Age, y = Concrete_compressive_strength, fill = Age)) +
+  geom_boxplot(show.legend = FALSE, outlier.alpha = 0.35) +
+  scale_fill_viridis_d(option = "D") +
+  labs(
+    title = "Concrete Strength by Age",
+    subtitle = "Concrete generally reaches higher strength at older ages",
+    x = "Age in days",
+    y = "Concrete compressive strength",
+    caption = "Source: UCI concrete strength dataset / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+The boxplot shows that age is an important factor in concrete strength. Older concrete tends to have higher compressive strength, although the spread of values also shows that ingredients and mixture design still matter. This plot supports the idea that concrete strength is related to time as well as material composition.
+
+## Cement and Water Compared with Strength
+
+```{r cement-scatter, fig.alt="Scatterplot showing cement amount and water amount in relation to concrete compressive strength categories."}
+ggplot(
+  new_concrete,
+  aes(
+    x = Cement,
+    y = Water,
+    color = strength_range,
+    shape = strength_range
+  )
+) +
+  geom_point(alpha = 0.75, size = 2) +
+  scale_color_viridis_d(option = "D") +
+  labs(
+    title = "Concrete Ingredients and Strength Range",
+    subtitle = "Cement and water amounts are compared across strength categories",
+    x = "Cement",
+    y = "Water",
+    color = "Strength range",
+    shape = "Strength range",
+    caption = "Source: UCI concrete strength dataset / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Interpretation
+
+The scatterplot compares two major mixture ingredients while also showing the strength range. Stronger mixtures often appear where cement content is higher, although the relationship is not perfectly linear. Shape is used along with color so that the grouping does not depend on color alone.
+
+# Bad Chart Redesign: Before and After
+
+The final project also asks for a bad or misleading chart to be redesigned. The first chart below intentionally uses poor design choices: a rainbow palette, angled labels, chartjunk, and no clear message. The redesigned chart uses a cleaner layout, a colorblind-safe palette, sorted categories, and clearer labels.
+
+## Before: Poorly Designed Chart
+
+```{r bad-chart-before, fig.alt="Poorly designed bar chart with distracting colors and unclear formatting."}
+bad_precip <- precip_month %>%
+  mutate(month = factor(month, levels = sample(month)))
+
+ggplot(bad_precip, aes(x = month, y = total_precipitation, fill = month)) +
+  geom_col(color = "black") +
+  scale_fill_manual(values = rainbow(nrow(bad_precip))) +
+  labs(
+    title = "RAIN RAIN RAIN!!!",
+    x = "",
+    y = "",
+    fill = "Months"
+  ) +
+  theme(
+    panel.background = element_rect(fill = "gray90"),
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    legend.position = "bottom"
+  )
+```
+
+## After: Improved Chart
+
+```{r bad-chart-after, fig.alt="Improved bar chart showing monthly precipitation in calendar order with a colorblind-safe palette."}
+ggplot(precip_month, aes(x = month, y = total_precipitation, fill = total_precipitation)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_viridis_c(option = "C") +
+  labs(
+    title = "Monthly Precipitation in Tampa, 2022",
+    subtitle = "Calendar order and a simpler design make the pattern easier to read",
+    x = "Month",
+    y = "Total precipitation",
+    caption = "Source: Florida Climate Center / course dataset"
+  ) +
+  theme_minimal()
+```
+
+### Redesign Explanation
+
+The original chart was difficult to interpret because it used a rainbow palette, unnecessary visual decoration, unsorted categories, and unclear labeling. The redesigned chart improves the visualization by placing months in calendar order, using a colorblind-safe palette, removing unnecessary chartjunk, and adding a clear title, subtitle, axis labels, and source caption. These changes make the pattern easier to understand and more accessible.
+
+# Accessibility Notes
+
+This project follows accessibility guidelines in several ways. The charts use viridis or neutral color palettes that are more readable for users with color vision differences. Each figure includes descriptive `fig.alt` text. The scatterplot uses both color and shape so that categories are not communicated by color alone. Labels, titles, and captions are written to make the purpose of each chart clear.
+
+# Conclusion
+
+Project 03 extends the final portfolio by demonstrating several visualization techniques, including histograms, density plots, ridgeline plots, spatial mapping, interactive visualization, and chart redesign. The Tampa weather data shows seasonal variation in temperature and precipitation, while the concrete dataset demonstrates how distributions and relationships can be explored using multiple chart types. The spatial map shows the ability to work with shapefiles, and the before/after redesign demonstrates how design choices affect readability. Together, these sections show how data visualization can support exploration, comparison, interpretation, and communication.

@@ -1,0 +1,291 @@
+---
+title: "Data Visualization Project 02"
+author: "Sukhadevsingh Jogindrasingh Virdee `svirdee2943@floridapoly.edu`"
+output:
+  html_document:
+    keep_md: true
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+This revised mini-project 2 analyzes daily birth records in the United States from 2000 through 2014. The main goal is to understand how birth activity changed over time and how births varied across days of the week. This version improves the original report by adding an interactive chart, using accessible visual design choices, ordering weekdays in calendar order, adding a callout annotation, and including a before/after chart redesign.
+
+# Introduction
+
+## Motivation
+
+Birth patterns provide valuable insight into demographic trends, healthcare practices, and population changes in the United States. Understanding how birth counts vary over time and across different days of the week can reveal important patterns in human behavior and healthcare scheduling. This project analyzes daily birth records in the United States from 2000 through 2014 to explore long-term trends and identify factors that may influence birth frequency.
+
+Rather than focusing solely on overall birth totals, this analysis investigates whether births are distributed evenly throughout the week and whether birth counts changed over the fifteen-year study period. The project combines interactive, descriptive, and model-based visualizations to communicate these patterns and provide a clearer understanding of the data.
+
+## Dataset Description
+
+The dataset contains daily birth records in the United States between 2000 and 2014. Each observation represents the number of births recorded on a specific day. The dataset includes information about the year, month, date, day of the week, and total number of births.
+
+The primary variables used in this analysis are:
+
+- **year**: calendar year of observation
+- **month**: month of observation
+- **date_of_month**: day of the month
+- **day_of_week**: weekday associated with each observation
+- **births**: total births recorded on that day
+
+The dataset provides an opportunity to explore temporal patterns in birth activity and examine how birth counts vary across different time scales.
+
+## Data Preparation
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(plotly)
+library(lubridate)
+library(broom)
+library(htmlwidgets)
+
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+```
+
+Reading CSV file
+```{r}
+births <- read_csv("../data/us_births_00_14.csv")
+
+births <- births %>%
+  mutate(
+    date = as.Date(date),
+    day_of_week = recode(day_of_week,
+                         "Mon" = "Monday",
+                         "Tues" = "Tuesday",
+                         "Wed" = "Wednesday",
+                         "Thurs" = "Thursday",
+                         "Fri" = "Friday",
+                         "Sat" = "Saturday",
+                         "Sun" = "Sunday"),
+    day_of_week = factor(day_of_week,
+                         levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")),
+    day_type = if_else(day_of_week %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+  )
+
+head(births)
+
+```
+
+```{r}
+glimpse(births)
+```
+
+
+```{r}
+summary(births)
+```
+
+## Data Cleaning
+
+```{r}
+sum(is.na(births))
+```
+
+The dataset contains no significant missing values and required minimal cleaning. The main preparation step was converting the date variable to date format and recoding the weekday abbreviations into full weekday names so the day-of-week chart can be displayed in correct calendar order.
+
+## Accessibility and Design Choices
+
+This report uses several accessibility improvements. Static figures include `fig.alt` text in the R Markdown chunk options. The weekday visualization uses a colorblind-safe viridis palette and direct value labels so the reader does not need to rely on color alone. The improved weekday chart also uses calendar order from Monday through Sunday rather than ordering the days by average births.
+
+
+
+## Visualization 1: Interactive Birth Trends
+
+### Aggregate Births by Year
+
+```{r}
+births_yearly <- births %>%
+  group_by(year) %>%
+  summarise(total_births = sum(births), .groups = "drop")
+```
+
+```{r interactive-birth-trend, fig.alt="Interactive line chart showing total annual births in the United States from 2000 through 2014."}
+interactive_plot <- plot_ly(
+  births_yearly,
+  x = ~year,
+  y = ~total_births,
+  type = "scatter",
+  mode = "lines+markers",
+  text = ~paste0("Year: ", year,
+                 "<br>Total births: ", scales::comma(total_births)),
+  hoverinfo = "text"
+) %>%
+  layout(
+    title = "Total U.S. Births by Year, 2000-2014",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Total Births")
+  )
+
+interactive_plot
+
+saveWidget(
+  interactive_plot,
+  file = "Virdee_Project_02_interactive_birth_trend.html",
+  selfcontained = TRUE
+)
+```
+
+### Findings
+
+>The yearly birth totals reveal that birth activity remained relatively stable throughout the study period, although noticeable fluctuations are present. Some years experienced modest increases while others showed slight declines. The interactive visualization makes it possible to hover over each year and inspect the exact annual birth total, which provides more detail than a static chart alone.
+>
+>Although variation exists from year to year, the data do not indicate dramatic changes in national birth levels during this period. Instead, the visualization suggests a generally consistent volume of births with moderate fluctuations. The dataset does not provide enough information to determine the causes of these changes, so the results should be interpreted as descriptive patterns rather than causal evidence.
+
+## Visualization 2: Births by Day of Week
+
+```{r day-summary}
+births_day <- births %>%
+  group_by(day_of_week, day_type) %>%
+  summarise(avg_births = mean(births), .groups = "drop")
+```
+
+```{r weekday-chart, fig.height=5, fig.width=8, fig.alt="Bar chart showing average births by day of week in calendar order from Monday through Sunday. Weekdays are generally higher than weekends."}
+ggplot(births_day,
+       aes(x = day_of_week,
+           y = avg_births,
+           fill = day_type)) +
+  geom_col(width = 0.75) +
+  geom_text(
+    aes(label = round(avg_births, 0)),
+    vjust = -0.35,
+    size = 3.2
+  ) +
+  annotate(
+    "label",
+    x = 6.5,
+    y = max(births_day$avg_births) + 750,
+    label = "Weekend averages are lower",
+    size = 3.5,
+    label.size = 0.25
+  ) +
+  scale_fill_viridis_d(option = "C", end = 0.85) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_cartesian(ylim = c(0, max(births_day$avg_births) + 1500)) +
+  labs(
+    title = "Average Births by Day of Week",
+    subtitle = "Calendar order highlights the weekday-to-weekend pattern",
+    x = "Day of Week",
+    y = "Average Births",
+    fill = "Day Type",
+    caption = "Source: U.S. daily births dataset, 2000-2014"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
+```
+
+### Findings
+
+>The average number of births differs substantially across days of the week. Weekdays generally exhibit higher average birth counts than weekends, with Saturday and Sunday consistently showing lower values. This pattern suggests that births are not distributed evenly throughout the week.
+>
+>One possible explanation is the scheduling of medical procedures such as induced labor or cesarean deliveries during standard working days. However, the dataset does not contain information about delivery methods, so this interpretation should be considered a reasonable hypothesis rather than a confirmed conclusion. The visualization clearly demonstrates that day-of-week effects are present and represent an important source of variation in birth activity.
+
+## Visualization 3: Model Visualization
+
+### Linear Regression
+
+```{r linear-model}
+model <- lm(total_births ~ year, data = births_yearly)
+tidy(model)
+```
+
+```{r regression-chart, fig.height=5, fig.width=8, fig.alt="Scatterplot and linear regression line showing the relationship between year and total annual births from 2000 through 2014."}
+ggplot(births_yearly,
+       aes(x = year,
+           y = total_births)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Linear Model of Births Over Time",
+    subtitle = "Annual birth totals show a modest long-term decline after the late-2000s peak",
+    x = "Year",
+    y = "Total Births",
+    caption = "Source: U.S. daily births dataset, 2000-2014"
+  ) +
+  theme_minimal()
+```
+
+### Findings
+
+>The regression model was used to examine the relationship between year and total annual births in the United States between 2000 and 2014. The fitted regression line summarizes the overall trend in birth totals and helps determine whether births generally increased, decreased, or remained stable during the study period.
+>
+>The visualization suggests that birth totals experienced only modest changes over time, with no evidence of dramatic long-term growth or decline. While annual birth counts fluctuate from year to year, the regression line indicates that these changes occur within a relatively narrow range compared to the overall number of births recorded each year.
+>
+>The confidence interval surrounding the regression line illustrates the uncertainty associated with the model estimates. Although the model identifies a general trend, year alone does not fully explain variation in birth counts. Additional demographic, economic, and social factors would likely be necessary to better understand the patterns observed in the data.
+>
+>Overall, the negative slope of the regression line suggests a slight decline in total births over the study period, although the magnitude of the change is relatively small. The model provides a useful summary of long-term birth trends and complements the descriptive visualizations by quantifying the relationship between time and birth activity.
+
+## Bad Chart Redesign: Before and After
+
+The original version of the day-of-week chart had two main design problems. First, the bars were ordered by average births rather than calendar order, which made the weekly pattern harder to interpret. Second, the color scale encoded average births even though the bar heights already showed that information. This duplicated the same variable and made the visual design less clear.
+
+### Before: Less Effective Chart
+
+```{r bad-chart-before, fig.height=5, fig.width=8, fig.alt="Before chart showing average births by weekday ordered by value instead of calendar order, with redundant color encoding."}
+ggplot(births_day,
+       aes(x = reorder(day_of_week, avg_births),
+           y = avg_births,
+           fill = avg_births)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_gradient(low = "yellow", high = "red") +
+  labs(
+    title = "Average Births by Day of Week",
+    x = "Day of Week",
+    y = "Average Births",
+    fill = "Average Births"
+  ) +
+  theme_minimal()
+```
+
+### After: Improved Chart
+
+```{r bad-chart-after, fig.height=5, fig.width=8, fig.alt="After chart showing average births by weekday in calendar order with readable labels and a colorblind-safe palette."}
+ggplot(births_day,
+       aes(x = day_of_week,
+           y = avg_births,
+           fill = day_type)) +
+  geom_col(width = 0.75) +
+  geom_text(
+    aes(label = round(avg_births, 0)),
+    vjust = -0.35,
+    size = 3.2
+  ) +
+  scale_fill_viridis_d(option = "C", end = 0.85) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_cartesian(ylim = c(0, max(births_day$avg_births) + 1000)) +
+  labs(
+    title = "Average Births by Day of Week",
+    subtitle = "Calendar order makes the weekday/weekend pattern easier to read",
+    x = "Day of Week",
+    y = "Average Births",
+    fill = "Day Type"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
+```
+
+### Redesign Explanation
+
+>The redesigned chart improves the original by placing the weekdays in natural calendar order from Monday through Sunday. This makes the weekly pattern easier to follow and clearly shows that average births tend to be higher during weekdays and lower on weekends. The improved version also uses a colorblind-safe viridis palette, direct value labels, and a simpler legend. These changes reduce visual clutter and make the chart easier to interpret.
+
+## Conclusion
+
+>This project explored daily birth records in the United States from 2000 to 2014 using interactive, descriptive, and model-based visualizations. The analysis revealed that overall birth activity remained relatively stable throughout the study period, while noticeable differences were observed across days of the week. In particular, weekdays generally exhibited higher average birth counts than weekends, highlighting the importance of temporal patterns in birth activity.
+>
+>The interactive visualization provided an effective overview of long-term trends by allowing the reader to hover over each year and view exact birth totals. The day-of-week analysis helped identify recurring patterns in birth frequency, and the regression model complemented these findings by summarizing the relationship between year and total annual births.
+>
+>Overall, the project demonstrates how multiple visualization techniques can be used to explore data from different perspectives and uncover meaningful insights. Although several interesting patterns were identified, additional demographic, economic, and healthcare-related variables would be necessary to better understand the factors contributing to these trends.
