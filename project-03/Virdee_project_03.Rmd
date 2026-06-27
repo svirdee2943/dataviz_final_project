@@ -202,8 +202,7 @@ interactive_precip_plot
 
 
 ```{r save-interactive, eval=FALSE}
-# Optional: uncomment this line if your instructor asks for a separate HTML widget.
-# htmlwidgets::saveWidget(interactive_precip_plot, "interactive_precipitation_project_03.html", selfcontained = TRUE)
+ htmlwidgets::saveWidget(interactive_precip_plot, "interactive_precipitation_project_03.html", selfcontained = TRUE)
 ```
 
 # Spatial Visualization Using Shapefiles
